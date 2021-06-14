@@ -1,45 +1,69 @@
 # !/usr/bin/env python
-# encoding: utf-8
-from flask import Flask
-from flask_mongoengine import MongoEngine
+
+from flask import Flask, request, jsonify
+from flask_pymongo import PyMongo, ObjectId
 from flask_cors import CORS
-from flask_pymongo import PyMongo
-
 app = Flask(__name__)
+app.config['MONGO_URI'] = 'mongodb://localhost/pythonreactdb'
+mongo = PyMongo(app)
 
-app.config['MONGODB_SETTINGS'] = {
-    'db': 'your_database',
-    'host': 'localhost',
-    'port': 27017
-}
+CORS(app)
 
-db = MongoEngine()
-db.init_app(app)
-
+db = mongo.db.users
 
 @app.route('/users', methods = ['POST'])
-def createUsers():
-    return 'received'
-
-@app.route('/users', methods = ['POST'])
-def getUsers():
-    return 'received'
-
-@app.route('/users/<id>', methods = ['POST'])
-def getUser():
-    return 'received'
-
-@app.route('/users/<id>', methods = ['POST'])
 def createUser():
-    return 'received'
+    id = db.insert({
+        'name' : request.json['name'],
+        'email' : request.json['email'],
+        'password' : request.json['password']
+    })
+    #print(str(ObjectId(id)))
+    return jsonify(str(ObjectId(id)))
 
-@app.route('/users/<id>', methods = ['POST'])
-def deleteUser():
-    return 'received'
+@app.route('/users', methods = ['GET'])
+def getUsers():
+    users = []
+    for doc in db.find():
+        users.append({
+            'id' : str(ObjectId(doc['_id'])),
+            'name' : doc['name'],
+            'email' : doc['email'],
+            'password' : doc['password']
+        })
+    return jsonify(users)
+
+@app.route('/user/<id>', methods = ['GET'])
+def getUser(id):
+    user = db.find_one({
+        '_id' : ObjectId(id)
+    })
+    print(user)
+    return jsonify({
+        'id' : str(ObjectId(user['_id'])),
+        'name' : user['name'],
+        'email' : user['email'],
+        'password' : user['password']
+    })
+
+
+@app.route('/users/<id>', methods = ['DELETE'])
+def deleteUser(id):
+    db.delete_one({'_id' : ObjectId(id)})
+    return jsonify({'msg' : 'User deleted'})
 
 @app.route('/users/<id>', methods = ['PUT'])
-def updateUser():
-    return 'received'
+def updateUser(id):
+    print(id)
+    print(request.json)
+    db.update_one({
+    '_id' : ObjectId(id)},
+    {'$set': {
+        'name' : request.json['name'],
+        'email' : request.json['email'],
+        'password' : request.json['password']
+    }})
+    return jsonify({'msg' : 'User updated'})
 
 if __name__ == "__main__":
     app.run(debug=True)
