@@ -1,23 +1,33 @@
-from pydantic import BaseModel # type: ignore
-from sqlmodel import SQLModel
+from pydantic import BaseModel
+from sqlmodel import SQLModel, Field, Relationship
 
 class CustomerBase(SQLModel):
-    name: str
-    descr: str | None
-    email: str
-    age: int
+    name: str = Field(default = None)
+    descr: str | None = Field(default = None)
+    email: str = Field(default = None)
+    age: int = Field(default = None)
 
 class CustomerCreate(CustomerBase):
     pass
 
+class CustomerUpdate(CustomerBase):
+    pass
+
 class Customer(CustomerBase, table = True):
-    id: int | None = None
+    id: int | None = Field(default = None, primary_key = True)
+    transactions: list["Transaction"] = Relationship(back_populates="customer")
 
-
-class Transaction(BaseModel):
-    id: int
+class TransactionBase(SQLModel):
     ammount: int
     description: str
+
+class Transaction(TransactionBase, table = True):
+    id: int | None = Field(default=None, primary_key = True)
+    customer_id: int = Field(foreign_key = "customer.id")
+    customer: Customer = Relationship(back_populates = "transactions")
+
+class TransactionCreate(TransactionBase):
+    customer_id: int = Field(foreign_key = "customer.id")
 
 class Invoice(BaseModel):
     id: int
@@ -28,7 +38,6 @@ class Invoice(BaseModel):
     def __init__(self, **data):
         super().__init__(**data)
         self.total = self.ammount_total
-
 
     @property
     def ammount_total(self):
